@@ -72,6 +72,7 @@ export type RootStackParamList = {
     encouragement: string;
     category: ChallengeCategory;
     status: ChallengeStatus;
+    order: number;
   };
   SocialMoment: undefined;
 };

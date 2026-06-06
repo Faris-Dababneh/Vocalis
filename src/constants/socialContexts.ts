@@ -13,6 +13,7 @@ export const SOCIAL_CONTEXTS = [
   { id: 'outside', label: '🌳 Outside', emoji: '🌳' },
   { id: 'home', label: '🏠 Home', emoji: '🏠' },
   { id: 'online', label: '📱 Online', emoji: '📱' },
+  { id: 'other', label: '📍 Other', emoji: '📍' },
 ];
 
 export const STATIC_MISSIONS: Record<string, SocialMission[]> = {
@@ -71,5 +72,12 @@ export const STATIC_MISSIONS: Record<string, SocialMission[]> = {
     { emoji: '🤝', title: 'Introduce yourself in a community', description: 'Introduce yourself in a Discord, forum, or group.' },
     { emoji: '💡', title: 'Share something you made', description: 'Post something you created or an idea you had.' },
     { emoji: '🎙️', title: 'Join a voice or video call', description: 'Hop into a community voice chat or video call.' },
+  ],
+  other: [
+    { emoji: '👁', title: 'Make eye contact', description: 'Look someone in the eyes for 3 seconds and hold a natural gaze.' },
+    { emoji: '💬', title: 'Start a conversation', description: 'Say something genuine to the nearest person around you.' },
+    { emoji: '😊', title: 'Smile at a stranger', description: 'Give a genuine smile to someone you pass by.' },
+    { emoji: '🙌', title: 'Give a compliment', description: 'Tell someone one specific thing you genuinely appreciate about them.' },
+    { emoji: '🗣', title: 'Introduce yourself', description: 'Walk up to someone nearby and say your name.' },
   ],
 };

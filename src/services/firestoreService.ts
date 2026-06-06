@@ -131,6 +131,22 @@ export async function unlockNextChallenge(uid: string, currentOrder: number): Pr
   }
 }
 
+// Scans all challenges and unlocks any that should be available (completed predecessor) but aren't.
+// Handles users who completed challenges before the auto-unlock fix was deployed.
+export async function repairUnlockGaps(uid: string, challenges: Challenge[]): Promise<void> {
+  const sorted = [...challenges].sort((a, b) => a.order - b.order);
+  const repairs: Promise<void>[] = [];
+  for (const c of sorted) {
+    if (c.status === 'completed') {
+      const next = sorted.find((ch) => ch.order === c.order + 1);
+      if (next && (next.status === 'locked' || next.status === 'future')) {
+        repairs.push(updateDoc(doc(db, 'users', uid, 'challenges', next.id), { status: 'available' }));
+      }
+    }
+  }
+  await Promise.all(repairs);
+}
+
 export async function awardXP(
   uid: string,
   xpEarned: number

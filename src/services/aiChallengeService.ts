@@ -100,7 +100,7 @@ Return ONLY a raw JSON array (no markdown, no backticks) of exactly 20 objects:
   let rawText: string;
   try {
     const completion = await client.chat.completions.create({
-      model: 'qwen-plus', // qwen3.6-plus via DashScope international API string
+      model: 'qwen3.6-flash', // qwen3.6-plus via DashScope international API string
       max_tokens: 16000,  // 20 challenges × ~300 tokens each = ~6000; headroom to never truncate
       messages: [
         { role: 'system', content: systemPrompt },

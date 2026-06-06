@@ -57,11 +57,19 @@ export async function completeSocialMoment(
   if (!user) return;
 
   const momentRef = doc(db, 'users', userId, 'socialMoments', `${Date.now()}`);
-  await setDoc(momentRef, {
-    ...data,
+  // Build document explicitly — never spread optional fields that may be undefined,
+  // as Firestore rejects undefined values outright.
+  const momentDoc: Record<string, unknown> = {
+    context: data.context,
+    mission: data.mission,
+    confidence: data.confidence,
     completedAt: serverTimestamp(),
     xpEarned: 50,
-  });
+  };
+  if (data.recordingUri) {
+    momentDoc.recordingUri = data.recordingUri;
+  }
+  await setDoc(momentRef, momentDoc);
 
   await awardXP(userId, 50);
   await updateStreak(userId);
