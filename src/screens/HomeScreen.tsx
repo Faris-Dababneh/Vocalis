@@ -62,12 +62,7 @@ const PHASE_LABELS: Record<SessionPhase, string> = {
 };
 const PHASE_DURATION = 4;
 
-const DURATION_OPTIONS = [
-  { label: '1 min', seconds: 60 },
-  { label: '2 min', seconds: 120 },
-  { label: '3 min', seconds: 180 },
-  { label: '5 min', seconds: 300 },
-];
+const DEFAULT_SESSION_SECONDS = 180; // 3 minutes, no picker needed
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -89,7 +84,7 @@ export default function HomeScreen({ navigation }: Props) {
 
   // Breathing
   const [breathPhase, setBreathPhase] = useState<BreathPhase>('idle');
-  const [sessionDuration, setSessionDuration] = useState(60);
+  const sessionDuration = DEFAULT_SESSION_SECONDS;
   const [currentSessionPhase, setCurrentSessionPhase] = useState<SessionPhase>('inhale');
   const [phaseCountdown, setPhaseCountdown] = useState(PHASE_DURATION);
   const [sessionTimeLeft, setSessionTimeLeft] = useState(0);
@@ -138,7 +133,7 @@ export default function HomeScreen({ navigation }: Props) {
 
   // Affirmation rotation
   useEffect(() => {
-    if (breathPhase === 'session' || breathPhase === 'select') return;
+    if (breathPhase === 'session') return;
     const cycle = () => {
       Animated.timing(affirmOpacity, { toValue: 0, duration: 500, useNativeDriver: true }).start(() => {
         setAffirmIndex((i) => (i + 1) % AFFIRMATIONS.length);
@@ -226,7 +221,7 @@ export default function HomeScreen({ navigation }: Props) {
         }
       }
     }, 1000);
-  }, [sessionDuration, animatePhase, stopTimers]);
+  }, [animatePhase, stopTimers]);
 
   useEffect(() => {
     return () => stopTimers();
@@ -353,7 +348,7 @@ export default function HomeScreen({ navigation }: Props) {
           {/* Orb — flat sibling structure so text is always fully visible */}
           <TouchableOpacity
             onPress={() => {
-              if (breathPhase === 'idle') setBreathPhase('select');
+              if (breathPhase === 'idle') startSession();
               else if (breathPhase === 'done') resetBreathing();
             }}
             activeOpacity={breathPhase === 'session' ? 1 : 0.85}
@@ -432,12 +427,6 @@ export default function HomeScreen({ navigation }: Props) {
                     <Text style={styles.orbSub}>Tap to reset</Text>
                   </>
                 )}
-                {breathPhase === 'select' && (
-                  <>
-                    <Text style={styles.orbLabel}>BOX BREATHING</Text>
-                    <Text style={styles.orbSub}>choose duration</Text>
-                  </>
-                )}
               </View>
             </Animated.View>
           </TouchableOpacity>
@@ -451,42 +440,6 @@ export default function HomeScreen({ navigation }: Props) {
             </View>
           )}
 
-          {breathPhase === 'select' && (
-            <View style={styles.durationPicker}>
-              <View style={styles.durationChips}>
-                {DURATION_OPTIONS.map((d) => (
-                  <TouchableOpacity
-                    key={d.seconds}
-                    onPress={() => setSessionDuration(d.seconds)}
-                    style={[styles.durationChip, sessionDuration === d.seconds && styles.durationChipActive]}
-                  >
-                    <Text style={[styles.durationChipText, sessionDuration === d.seconds && styles.durationChipTextActive]}>
-                      {d.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              <View style={styles.btnRowWrap}>
-                <TouchableOpacity
-                  onPress={startSession}
-                  activeOpacity={0.85}
-                  style={styles.beginBtnWrap}
-                >
-                  <LinearGradient
-                    colors={['#5B8CDB', '#7C6FCD']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.beginBtn}
-                  >
-                    <Text style={styles.beginBtnText}>Begin Session</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => setBreathPhase('idle')}>
-                  <Text style={styles.cancelText}>Cancel</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
         </View>
 
         {/* Affirmation */}
@@ -604,11 +557,7 @@ export default function HomeScreen({ navigation }: Props) {
           )}
 
           {challenges.length > 0 && (
-            <ScrollView
-              style={{ height: Math.min(pathHeight, height * 0.6) }}
-              nestedScrollEnabled
-              showsVerticalScrollIndicator={false}
-            >
+            <View>
               <View style={{ width, height: pathHeight, position: 'relative' }}>
                 <Svg
                   width={width}
@@ -707,7 +656,7 @@ export default function HomeScreen({ navigation }: Props) {
                   );
                 })}
               </View>
-            </ScrollView>
+            </View>
           )}
         </View>
       </ScrollView>

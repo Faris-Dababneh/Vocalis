@@ -68,32 +68,14 @@ export async function generateExposurePlan(
   })();
 
   const systemPrompt =
-    'You are a licensed clinical psychologist specializing in CBT and graduated exposure therapy for social anxiety. Output ONLY valid JSON. No prose, no markdown, no code fences. Never use hyphens or dashes. Write warmly and conversationally.';
+    'You are a CBT exposure therapy expert. Output ONLY a raw JSON array. No markdown, no prose, no code fences.';
 
-  const userPrompt = `Generate exactly 20 graduated exposure therapy challenges for:
-- Name: ${user.displayName}
-- Score: ${user.anxietyScore}/72 (${user.anxietyLevel}). ${scoreContext}
-- Goal: ${user.goal}
-- Timeframe: ${user.timeframe}
-
-Rules:
-1. Order by exposure hierarchy. Each challenge slightly harder than the last.
-2. Challenges 1 to 3 must be completable today, indoors, within 5 minutes.
-3. Tips must be specific and CBT-grounded, not generic.
-4. Encouragement references their personal goal.
-
-CRITICAL FORMATTING RULES:
-- NEVER use hyphens, em dashes, or en dashes (-, or similar) anywhere in any field
-- Write in plain, warm, conversational English
-- Keep sentences short. Use periods, not dashes.
-- No bullet points or numbered lists inside string fields
-- title: max 6 words
-- description: 1 to 2 short sentences. Plain language. No jargon.
-- tips: each tip is 1 short sentence. Practical. Specific. No cliches.
-- encouragement: 1 warm sentence. Reference their goal naturally.
-
-Return ONLY a raw JSON array (no markdown, no backticks) of exactly 20 objects:
-[{"title":"...","description":"...","emoji":"...","tips":["...","...","..."],"difficulty":"micro"|"easy"|"medium"|"hard"|"elite","xpReward":10-200,"estimatedMinutes":1-60,"encouragement":"...","category":"foundation"|"warmup"|"eye_contact"|"conversation"|"group"|"confrontation"|"romantic"|"performance"|"leadership","week":1-4,"day":1-7},...]`;
+  const userPrompt = `Generate 20 graduated exposure challenges for social anxiety.
+User: score ${user.anxietyScore}/72 (${user.anxietyLevel}), goal: "${user.goal}", timeframe: ${user.timeframe}.
+Context: ${scoreContext}
+Rules: order easiest to hardest. Challenges 1 to 3 must be doable alone indoors under 5 min. Tips are CBT grounded. Encouragement references their goal. No hyphens or dashes anywhere.
+Return JSON array of exactly 20:
+[{"title":"max 6 words","description":"1 sentence","emoji":"","tips":["","",""],"difficulty":"micro"|"easy"|"medium"|"hard"|"elite","xpReward":10-200,"estimatedMinutes":1-60,"encouragement":"1 sentence","category":"foundation"|"warmup"|"eye_contact"|"conversation"|"group"|"confrontation"|"romantic"|"performance"|"leadership","week":1-4,"day":1-7}]`;
 
   onProgress?.('Calling AI — this takes about 30–60 seconds...');
 
