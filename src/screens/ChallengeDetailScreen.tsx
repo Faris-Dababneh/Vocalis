@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Audio } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { Zap, Clock, Lightbulb } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
 import { completeChallenge } from '../services/challengeCompletionService';
 import {
@@ -51,7 +52,7 @@ const DIFF_COLORS: Record<string, string> = {
 };
 
 export default function ChallengeDetailScreen({ navigation, route }: Props) {
-  const { challengeId, title, description, emoji, tips, difficulty, xpReward, estimatedMinutes, encouragement, category, status } = route.params;
+  const { challengeId, title, description, emoji, tips, difficulty, xpReward, estimatedMinutes, encouragement, category, status, order } = route.params;
   const insets = useSafeAreaInsets();
   const { firebaseUser, refreshUser } = useAuth();
 
@@ -113,6 +114,7 @@ export default function ChallengeDetailScreen({ navigation, route }: Props) {
         anxietyBefore,
         anxietyAfter,
         recordingUri: skipRecording ? undefined : (recordingUri ?? undefined),
+        order,
       });
       setResult(res);
       await refreshUser();
@@ -149,15 +151,20 @@ export default function ChallengeDetailScreen({ navigation, route }: Props) {
             <Text style={styles.description}>{description}</Text>
             <View style={styles.metaRow}>
               <View style={styles.metaChip}>
-                <Text style={styles.metaChipText}>⚡ {xpReward} XP</Text>
+                <Zap size={13} color={COLORS.textSub} />
+                <Text style={styles.metaChipText}>{xpReward} XP</Text>
               </View>
               <View style={styles.metaChip}>
-                <Text style={styles.metaChipText}>⏱ ~{estimatedMinutes} min</Text>
+                <Clock size={13} color={COLORS.textSub} />
+                <Text style={styles.metaChipText}>~{estimatedMinutes} min</Text>
               </View>
             </View>
 
             <View style={styles.tipsCard}>
-              <Text style={styles.tipsHeader}>Tips</Text>
+              <View style={styles.tipsHeaderRow}>
+                <Lightbulb size={15} color={COLORS.primary} />
+                <Text style={styles.tipsHeader}>Tips</Text>
+              </View>
               {tips.map((tip, i) => (
                 <View key={i} style={styles.tipRow}>
                   <Text style={styles.tipBullet}>•</Text>
@@ -176,7 +183,7 @@ export default function ChallengeDetailScreen({ navigation, route }: Props) {
               style={styles.primaryBtnWrap}
             >
               <LinearGradient
-                colors={['#7B6EFF', '#A89CFF']}
+                colors={['#5B8CDB', '#7C6FCD']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.primaryBtn}
@@ -214,7 +221,7 @@ export default function ChallengeDetailScreen({ navigation, route }: Props) {
               style={styles.primaryBtnWrap}
             >
               <LinearGradient
-                colors={['#7B6EFF', '#A89CFF']}
+                colors={['#5B8CDB', '#7C6FCD']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.primaryBtn}
@@ -236,7 +243,7 @@ export default function ChallengeDetailScreen({ navigation, route }: Props) {
               <Text style={styles.micLabel}>Tap to record</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setPhase('anxiety_after')} style={styles.skipLink}>
-              <Text style={styles.skipLinkText}>Skip recording — mark as done →</Text>
+              <Text style={styles.skipLinkText}>Skip recording. Mark as done.</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -279,7 +286,7 @@ export default function ChallengeDetailScreen({ navigation, route }: Props) {
               style={styles.primaryBtnWrap}
             >
               <LinearGradient
-                colors={['#7B6EFF', '#A89CFF']}
+                colors={['#5B8CDB', '#7C6FCD']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.primaryBtn}
@@ -323,7 +330,7 @@ export default function ChallengeDetailScreen({ navigation, route }: Props) {
               style={styles.primaryBtnWrap}
             >
               <LinearGradient
-                colors={['#5AFFA3', '#7B6EFF']}
+                colors={['#7DC9A8', '#5B8CDB']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.primaryBtn}
@@ -349,7 +356,7 @@ export default function ChallengeDetailScreen({ navigation, route }: Props) {
             <Text style={styles.xpEarned}>+{result.xpEarned} XP</Text>
             {result.leveledUp && (
               <View style={styles.levelUpBadge}>
-                <Text style={styles.levelUpText}>Level Up — You're now Level {result.newLevel}</Text>
+                <Text style={styles.levelUpText}>Level Up! You are now Level {result.newLevel}</Text>
               </View>
             )}
             <TouchableOpacity
@@ -358,7 +365,7 @@ export default function ChallengeDetailScreen({ navigation, route }: Props) {
               style={styles.primaryBtnWrap}
             >
               <LinearGradient
-                colors={['#7B6EFF', '#A89CFF']}
+                colors={['#5B8CDB', '#7C6FCD']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.primaryBtn}
@@ -404,6 +411,9 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.full,
     paddingVertical: 6,
     paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   metaChipText: { fontSize: 13, color: COLORS.textSub },
   tipsCard: {
@@ -415,6 +425,7 @@ const styles = StyleSheet.create({
     padding: SPACE.md,
     gap: SPACE.sm,
   },
+  tipsHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: SPACE.xs },
   tipsHeader: { fontSize: 15, ...FONTS.subheading, color: COLORS.text },
   tipRow: { flexDirection: 'row', gap: SPACE.sm },
   tipBullet: { color: COLORS.primary, fontSize: 15 },

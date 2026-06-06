@@ -1,22 +1,40 @@
+/**
+ * ============================================================
+ *  VOCALIS DESIGN SYSTEM — CHANGE COLORS AND FONTS HERE
+ * ============================================================
+ *
+ *  Every screen imports from this file.
+ *  To retheme the entire app:
+ *    - Change COLORS values (hex or rgba strings)
+ *    - Change FONTS fontWeight/fontFamily values
+ *    - Change RADIUS for corner rounding
+ *    - Change SPACE for spacing density
+ *
+ *  Current theme: Headspace-inspired light — cream/white backgrounds,
+ *  slate text, blue/purple primary (#5B8CDB).
+ *  Replace primary (#5B8CDB) with your brand color and adjust
+ *  bg/surface accordingly.
+ * ============================================================
+ */
 export const COLORS = {
-  bg: '#08081A',
-  surface: '#12122A',
-  surfaceHi: '#1C1C3C',
-  surfaceHover: '#22223F',
-  primary: '#7B6EFF',
-  primaryLight: '#A89CFF',
-  primaryDark: '#5A4FD4',
-  accent: '#FF6EAF',
-  accentGreen: '#5AFFA3',
-  accentAmber: '#FFB86E',
-  text: '#EEE9FF',
-  textSub: '#9B96BF',
-  textMuted: '#4E4A6A',
-  border: 'rgba(123,110,255,0.18)',
-  borderBright: 'rgba(123,110,255,0.35)',
-  success: '#5AFFA3',
-  warning: '#FFB86E',
-  danger: '#FF6E6E',
+  bg: '#FFFFFF',
+  surface: '#FDF5EB',
+  surfaceHi: '#F5ECD8',
+  surfaceHover: '#EDE3CE',
+  primary: '#5B8CDB',
+  primaryLight: '#7BA7E8',
+  primaryDark: '#3D6FBF',
+  accent: '#7C6FCD',
+  accentGreen: '#7DC9A8',
+  accentAmber: '#5B8CDB',
+  text: '#2D2D2D',
+  textSub: '#4B5161',
+  textMuted: '#9298A8',
+  border: 'rgba(75,81,97,0.12)',
+  borderBright: 'rgba(91,140,219,0.35)',
+  success: '#7DC9A8',
+  warning: '#5B8CDB',
+  danger: '#E05A3A',
 };
 
 export const FONTS = {

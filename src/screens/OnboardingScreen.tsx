@@ -78,7 +78,7 @@ export default function OnboardingScreen({ navigation }: Props) {
 
         <TouchableOpacity onPress={goToNext} activeOpacity={0.85} style={styles.btnWrapper}>
           <LinearGradient
-            colors={['#7B6EFF', '#A89CFF']}
+            colors={['#5B8CDB', '#7C6FCD']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.btn}

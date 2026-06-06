@@ -18,9 +18,11 @@ import { signOut } from 'firebase/auth';
 import * as Haptics from 'expo-haptics';
 import Svg, { Path } from 'react-native-svg';
 
+import { Zap, Flame, CheckCircle2, Users, Sparkles, Star, Trophy, Lock } from 'lucide-react-native';
+
 import { auth } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
-import { subscribeToUserChallenges } from '../services/firestoreService';
+import { subscribeToUserChallenges, repairUnlockGaps } from '../services/firestoreService';
 import { generateExposurePlan } from '../services/aiChallengeService';
 import { updateStreak } from '../services/streakService';
 import { calculateLevel } from '../services/gamificationService';
@@ -30,6 +32,23 @@ import { AFFIRMATIONS } from '../constants/affirmations';
 import AuroraBackground from '../components/AuroraBackground';
 
 type Props = { navigation: NativeStackNavigationProp<RootStackParamList, 'Home'> };
+
+function NodeIcon({
+  difficulty,
+  isCompleted,
+  isLocked,
+}: {
+  difficulty: Challenge['difficulty'];
+  isCompleted: boolean;
+  isLocked: boolean;
+}): React.ReactElement {
+  if (isCompleted) return <CheckCircle2 size={20} color="#fff" /> as React.ReactElement;
+  if (isLocked) return <Lock size={16} color={COLORS.textMuted} /> as React.ReactElement;
+  if (difficulty === 'elite') return <Trophy size={20} color="#fff" /> as React.ReactElement;
+  if (difficulty === 'hard') return <Star size={20} color="#fff" /> as React.ReactElement;
+  if (difficulty === 'medium') return <Zap size={20} color="#fff" /> as React.ReactElement;
+  return <Sparkles size={20} color="#fff" /> as React.ReactElement;
+}
 
 type BreathPhase = 'idle' | 'select' | 'session' | 'done';
 type SessionPhase = 'inhale' | 'hold_in' | 'exhale' | 'hold_out';
@@ -94,11 +113,19 @@ export default function HomeScreen({ navigation }: Props) {
   const firstName = user?.displayName?.split(' ')[0] ?? 'there';
   const levelInfo = calculateLevel(user?.xp ?? 0);
   const completedCount = challenges.filter((c) => c.status === 'completed').length;
+  const repairDoneRef = useRef(false);
 
-  // Subscribe to challenges
+  // Subscribe to challenges; repair any unlock gaps on first load
   useEffect(() => {
     if (!firebaseUser) return;
-    const unsub = subscribeToUserChallenges(firebaseUser.uid, setChallenges);
+    repairDoneRef.current = false;
+    const unsub = subscribeToUserChallenges(firebaseUser.uid, (chs) => {
+      setChallenges(chs);
+      if (!repairDoneRef.current && chs.length > 0) {
+        repairDoneRef.current = true;
+        repairUnlockGaps(firebaseUser.uid, chs);
+      }
+    });
     return unsub;
   }, [firebaseUser]);
 
@@ -262,7 +289,7 @@ export default function HomeScreen({ navigation }: Props) {
     }
   };
 
-  const orbBaseSize = Math.min(width * 0.55, 220);
+  const orbBaseSize = Math.min(width * 0.38, 150);
 
   const formatTime = (s: number) => {
     const m = Math.floor(s / 60);
@@ -288,7 +315,10 @@ export default function HomeScreen({ navigation }: Props) {
 
       {/* Top Bar */}
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
-        <Text style={styles.wordmark}>Vocalis</Text>
+        <View style={styles.wordmarkRow}>
+          <Sparkles size={16} color={COLORS.primary} />
+          <Text style={styles.wordmark}>Vocalis</Text>
+        </View>
         <TouchableOpacity style={styles.avatar} onPress={openPanel}>
           <Text style={styles.avatarText}>
             {(user?.displayName ?? 'U').slice(0, 2).toUpperCase()}
@@ -443,7 +473,7 @@ export default function HomeScreen({ navigation }: Props) {
                   style={styles.beginBtnWrap}
                 >
                   <LinearGradient
-                    colors={['#7B6EFF', '#A89CFF']}
+                    colors={['#5B8CDB', '#7C6FCD']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={styles.beginBtn}
@@ -474,12 +504,15 @@ export default function HomeScreen({ navigation }: Props) {
             style={styles.socializeBtnWrap}
           >
             <LinearGradient
-              colors={['#7B6EFF', '#FF6EAF']}
+              colors={['#5B8CDB', '#7C6FCD']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.socializeBtn}
             >
-              <Text style={styles.socializeBtnText}>I'm About to Socialize</Text>
+              <View style={styles.socializeBtnInner}>
+                <Users size={20} color="#fff" />
+                <Text style={styles.socializeBtnText}>I'm About to Socialize</Text>
+              </View>
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -487,14 +520,17 @@ export default function HomeScreen({ navigation }: Props) {
         {/* Stats Strip */}
         <View style={[styles.section, styles.statsStrip]}>
           <View style={styles.statCard}>
+            <Zap size={15} color={COLORS.primary} />
             <Text style={styles.statValue}>{user?.xp ?? 0}</Text>
             <Text style={styles.statLabel}>XP</Text>
           </View>
           <View style={styles.statCard}>
+            <Flame size={15} color={COLORS.accentAmber} />
             <Text style={styles.statValue}>{user?.streak ?? 0}</Text>
             <Text style={styles.statLabel}>day streak</Text>
           </View>
           <View style={styles.statCard}>
+            <CheckCircle2 size={15} color={COLORS.accentGreen} />
             <Text style={styles.statValue}>{completedCount}</Text>
             <Text style={styles.statLabel}>completed</Text>
           </View>
@@ -520,7 +556,7 @@ export default function HomeScreen({ navigation }: Props) {
                   <Text style={styles.noPlanTitle}>Building your plan...</Text>
                   <Text style={styles.noPlanSub}>{generatingMsg}</Text>
                   <Text style={styles.noPlanHint}>
-                    Powered by Claude AI · usually takes 30–60 seconds
+                    Powered by Qwen AI · usually takes 30–60 seconds
                   </Text>
                 </>
               ) : generateError ? (
@@ -532,7 +568,7 @@ export default function HomeScreen({ navigation }: Props) {
                     activeOpacity={0.85}
                   >
                     <LinearGradient
-                      colors={['#7B6EFF', '#A89CFF']}
+                      colors={['#5B8CDB', '#7C6FCD']}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 0 }}
                       style={styles.generateBtn}
@@ -553,7 +589,7 @@ export default function HomeScreen({ navigation }: Props) {
                     activeOpacity={0.85}
                   >
                     <LinearGradient
-                      colors={['#7B6EFF', '#A89CFF']}
+                      colors={['#5B8CDB', '#7C6FCD']}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 0 }}
                       style={styles.generateBtn}
@@ -591,65 +627,83 @@ export default function HomeScreen({ navigation }: Props) {
                   ))}
                 </Svg>
 
-                {challenges.map((c) => {
+                {challenges.map((c, i) => {
                   const nodeX = c.x * width - 32;
                   const nodeY = c.y;
                   const isAvailable = c.status === 'available';
                   const isCompleted = c.status === 'completed';
                   const isLocked = c.status === 'locked' || c.status === 'future';
+                  const prev = challenges[i - 1];
+                  const showDayLabel = i === 0 || c.day !== prev?.day || c.week !== prev?.week;
 
                   return (
-                    <TouchableOpacity
-                      key={c.id}
-                      style={[
-                        styles.challengeNode,
-                        {
-                          left: nodeX,
-                          top: nodeY,
-                          borderColor: isAvailable
-                            ? COLORS.primary
-                            : isCompleted
-                            ? COLORS.accentGreen
-                            : COLORS.border,
-                          backgroundColor: isAvailable
-                            ? COLORS.primary
-                            : isCompleted
-                            ? COLORS.accentGreen
-                            : COLORS.surfaceHi,
-                        },
-                      ]}
-                      disabled={isLocked}
-                      onPress={() => {
-                        if (isLocked) return;
-                        navigation.navigate('ChallengeDetail', {
-                          challengeId: c.id,
-                          title: c.title,
-                          description: c.description,
-                          emoji: c.emoji,
-                          tips: c.tips,
-                          difficulty: c.difficulty,
-                          xpReward: c.xpReward,
-                          estimatedMinutes: c.estimatedMinutes,
-                          encouragement: c.encouragement,
-                          category: c.category,
-                          status: c.status,
-                        });
-                      }}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={styles.nodeSymbol}>
-                        {isCompleted ? '✓' : isLocked ? '' : String(c.order + 1)}
-                      </Text>
-                      <Text
+                    <React.Fragment key={c.id}>
+                      {showDayLabel && (
+                        <View
+                          style={[
+                            styles.dayLabel,
+                            { top: nodeY - 25, left: 0, right: 0 },
+                          ]}
+                          pointerEvents="none"
+                        >
+                          <Text style={styles.dayLabelText}>
+                            Week {c.week} · Day {c.day}
+                          </Text>
+                        </View>
+                      )}
+                      <TouchableOpacity
                         style={[
-                          styles.nodeTitle,
-                          { color: isLocked ? COLORS.textMuted : COLORS.text },
+                          styles.challengeNode,
+                          {
+                            left: nodeX,
+                            top: nodeY,
+                            borderColor: isAvailable
+                              ? COLORS.primary
+                              : isCompleted
+                              ? COLORS.accentGreen
+                              : COLORS.border,
+                            backgroundColor: isAvailable
+                              ? COLORS.primary
+                              : isCompleted
+                              ? COLORS.accentGreen
+                              : COLORS.surfaceHi,
+                          },
                         ]}
-                        numberOfLines={2}
+                        disabled={isLocked}
+                        onPress={() => {
+                          if (isLocked) return;
+                          navigation.navigate('ChallengeDetail', {
+                            challengeId: c.id,
+                            title: c.title,
+                            description: c.description,
+                            emoji: c.emoji,
+                            tips: c.tips,
+                            difficulty: c.difficulty,
+                            xpReward: c.xpReward,
+                            estimatedMinutes: c.estimatedMinutes,
+                            encouragement: c.encouragement,
+                            category: c.category,
+                            status: c.status,
+                            order: c.order,
+                          });
+                        }}
+                        activeOpacity={0.8}
                       >
-                        {c.title}
-                      </Text>
-                    </TouchableOpacity>
+                          <NodeIcon
+                          difficulty={c.difficulty}
+                          isCompleted={isCompleted}
+                          isLocked={isLocked}
+                        />
+                        <Text
+                          style={[
+                            styles.nodeTitle,
+                            { color: isLocked ? COLORS.textMuted : COLORS.text },
+                          ]}
+                        >
+                          {c.title}
+                        </Text>
+                      </TouchableOpacity>
+                    </React.Fragment>
                   );
                 })}
               </View>
@@ -692,7 +746,7 @@ export default function HomeScreen({ navigation }: Props) {
               <Text style={styles.panelEmail}>{user?.email}</Text>
               <View style={styles.levelBadge}>
                 <Text style={styles.levelBadgeText}>
-                  Level {user?.level ?? 0} — {levelInfo.title}
+                  Level {user?.level ?? 0}. {levelInfo.title}
                 </Text>
               </View>
 
@@ -772,6 +826,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.bg,
     height: 'auto',
   },
+  wordmarkRow: { flexDirection: 'row', alignItems: 'center', gap: SPACE.xs },
   wordmark: { fontSize: 22, ...FONTS.heading, color: COLORS.primary },
   avatar: {
     width: 42,
@@ -809,10 +864,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: SPACE.xs,
   },
-  orbLabel: { fontSize: 13, ...FONTS.heading, color: '#fff', letterSpacing: 2 },
-  orbSub: { fontSize: 12, color: 'rgba(255,255,255,0.85)' },
-  orbPhase: { fontSize: 22, ...FONTS.heading, color: '#fff', letterSpacing: 3 },
-  orbCountdown: { fontSize: 40, ...FONTS.heading, color: '#fff' },
+  orbLabel: { fontSize: 10, ...FONTS.heading, color: '#fff', letterSpacing: 2 },
+  orbSub: { fontSize: 9, color: 'rgba(255,255,255,0.85)' },
+  orbPhase: { fontSize: 16, ...FONTS.heading, color: '#fff', letterSpacing: 3 },
+  orbCountdown: { fontSize: 30, ...FONTS.heading, color: '#fff' },
   sessionControls: {
     alignItems: 'center',
     gap: SPACE.sm,
@@ -868,6 +923,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  socializeBtnInner: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm },
   socializeBtnText: { color: '#fff', fontSize: 17, ...FONTS.heading },
   statsStrip: {
     flexDirection: 'row',
@@ -928,12 +984,23 @@ const styles = StyleSheet.create({
   nodeSymbol: { fontSize: 16, color: '#fff', ...FONTS.heading },
   nodeTitle: {
     position: 'absolute',
-    top: 70,
-    width: 90,
+    top: 68,
+    width: 100,
     textAlign: 'center',
     fontSize: 10,
     color: COLORS.textSub,
-    left: -13,
+    left: -18,
+    flexWrap: 'wrap',
+  },
+  dayLabel: {
+    position: 'absolute',
+    alignItems: 'center',
+  },
+  dayLabelText: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+    ...FONTS.subheading,
+    letterSpacing: 0.5,
   },
   // Panel
   backdrop: {

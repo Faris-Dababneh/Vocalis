@@ -1,25 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  useWindowDimensions,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Audio } from 'expo-av';
+import { Mic, Square, Play, Pause, RotateCcw } from 'lucide-react-native';
 
 import { useAuth } from '../context/AuthContext';
 import { completeSocialMoment } from '../services/challengeCompletionService';
+import {
+  createAndStartRecording,
+  stopAndSaveRecording,
+  createPlaybackSound,
+  formatDuration,
+} from '../services/audioRecordingService';
 import { SOCIAL_CONTEXTS, STATIC_MISSIONS, SocialMission } from '../constants/socialContexts';
 import { RootStackParamList } from '../types';
 import { COLORS, RADIUS, SPACE, FONTS } from '../constants/theme';
 import AuroraBackground from '../components/AuroraBackground';
 
 type Props = { navigation: NativeStackNavigationProp<RootStackParamList, 'SocialMoment'> };
-type Step = 'context' | 'mission' | 'confidence' | 'celebration';
+type Step = 'context' | 'mission' | 'recording' | 'confidence' | 'celebration';
+type RecPhase = 'idle' | 'active' | 'review';
 
 export default function SocialMomentScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
@@ -31,9 +39,68 @@ export default function SocialMomentScreen({ navigation }: Props) {
   const [confidence, setConfidence] = useState(5);
   const [loading, setLoading] = useState(false);
 
+  // Recording state
+  const [recPhase, setRecPhase] = useState<RecPhase>('idle');
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [recordingUri, setRecordingUri] = useState<string | null>(null);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   const missions: SocialMission[] = selectedContext
     ? (STATIC_MISSIONS[selectedContext] ?? [])
     : [];
+
+  const startRecording = async () => {
+    try {
+      const { recording: rec } = await createAndStartRecording();
+      setRecording(rec);
+      setRecordingTime(0);
+      setRecPhase('active');
+      timerRef.current = setInterval(() => setRecordingTime((t) => t + 1), 1000);
+    } catch {
+      setRecPhase('idle');
+    }
+  };
+
+  const stopRecording = async () => {
+    if (!recording) return;
+    if (timerRef.current) clearInterval(timerRef.current);
+    const { uri, duration } = await stopAndSaveRecording(recording);
+    setRecording(null);
+    setRecordingUri(uri);
+    setRecordingDuration(duration);
+    setRecPhase('review');
+  };
+
+  const playRecording = async () => {
+    if (!recordingUri) return;
+    if (sound) {
+      await sound.playAsync();
+      setIsPlaying(true);
+      return;
+    }
+    const s = await createPlaybackSound(recordingUri);
+    setSound(s);
+    await s.playAsync();
+    setIsPlaying(true);
+    s.setOnPlaybackStatusUpdate((status) => {
+      if (status.isLoaded && status.didJustFinish) setIsPlaying(false);
+    });
+  };
+
+  const resetRecording = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    setRecording(null);
+    setRecordingUri(null);
+    setRecordingDuration(0);
+    setRecordingTime(0);
+    setIsPlaying(false);
+    setSound(null);
+    setRecPhase('idle');
+  };
 
   const handleComplete = async () => {
     if (!firebaseUser || !selectedMission) return;
@@ -43,6 +110,7 @@ export default function SocialMomentScreen({ navigation }: Props) {
         context: selectedContext,
         mission: selectedMission.title,
         confidence,
+        recordingUri: recordingUri ?? undefined,
       });
       await refreshUser();
       setStep('celebration');
@@ -51,7 +119,7 @@ export default function SocialMomentScreen({ navigation }: Props) {
     }
   };
 
-  const renderStep = () => {
+  const renderStep = (): React.ReactElement => {
     switch (step) {
       case 'context':
         return (
@@ -90,7 +158,8 @@ export default function SocialMomentScreen({ navigation }: Props) {
                   key={i}
                   onPress={() => {
                     setSelectedMission(m);
-                    setStep('confidence');
+                    resetRecording();
+                    setStep('recording');
                   }}
                   style={[styles.missionCard, selectedMission?.title === m.title && styles.missionCardActive]}
                   activeOpacity={0.8}
@@ -106,6 +175,99 @@ export default function SocialMomentScreen({ navigation }: Props) {
             <TouchableOpacity onPress={() => setStep('context')} style={styles.backLink}>
               <Text style={styles.backLinkText}>← Change location</Text>
             </TouchableOpacity>
+          </View>
+        );
+
+      case 'recording':
+        return (
+          <View style={styles.stepWrap}>
+            <Text style={styles.stepTitle}>Record your attempt</Text>
+            <Text style={styles.stepSub}>Optional. Go try your mission, then record a quick reflection.</Text>
+
+            <View style={styles.selectedMissionBadge}>
+              <Text style={styles.selectedMissionEmoji}>{selectedMission?.emoji}</Text>
+              <Text style={styles.selectedMissionTitle}>{selectedMission?.title}</Text>
+            </View>
+
+            {recPhase === 'idle' && (
+              <>
+                <TouchableOpacity onPress={startRecording} style={styles.micBtn} activeOpacity={0.8}>
+                  <Mic size={32} color="#fff" />
+                  <Text style={styles.micLabel}>Tap to Record</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setStep('confidence')}
+                  activeOpacity={0.85}
+                  style={styles.primaryBtnWrap}
+                >
+                  <LinearGradient
+                    colors={['#5B8CDB', '#7C6FCD']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.primaryBtn}
+                  >
+                    <Text style={styles.primaryBtnText}>Skip. Rate confidence.</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setStep('mission')} style={styles.backLink}>
+                  <Text style={styles.backLinkText}>← Change mission</Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            {recPhase === 'active' && (
+              <>
+                <View style={styles.waveform}>
+                  {Array.from({ length: 18 }).map((_, i) => (
+                    <View
+                      key={i}
+                      style={[styles.waveBar, { height: 10 + Math.random() * 28, backgroundColor: COLORS.primary }]}
+                    />
+                  ))}
+                </View>
+                <Text style={styles.recTimer}>{formatDuration(recordingTime * 1000)}</Text>
+                <TouchableOpacity onPress={stopRecording} style={styles.stopBtn} activeOpacity={0.8}>
+                  <Square size={16} color="#fff" />
+                  <Text style={styles.stopBtnText}>Stop</Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            {recPhase === 'review' && (
+              <>
+                <View style={styles.playbackCard}>
+                  <TouchableOpacity onPress={playRecording} style={styles.playBtn}>
+                    {isPlaying
+                      ? <Pause size={20} color="#fff" />
+                      : <Play size={20} color="#fff" />}
+                  </TouchableOpacity>
+                  <Text style={styles.playDuration}>{formatDuration(recordingDuration)}</Text>
+                  <TouchableOpacity onPress={resetRecording} style={styles.rerecordBtn}>
+                    <RotateCcw size={16} color={COLORS.textMuted} />
+                  </TouchableOpacity>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setStep('confidence')}
+                  activeOpacity={0.85}
+                  style={styles.primaryBtnWrap}
+                >
+                  <LinearGradient
+                    colors={['#7DC9A8', '#5B8CDB']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.primaryBtn}
+                  >
+                    <Text style={styles.primaryBtnText}>Use this recording</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => { resetRecording(); setStep('confidence'); }}
+                  style={styles.backLink}
+                >
+                  <Text style={styles.backLinkText}>Discard. Continue without recording.</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         );
 
@@ -142,7 +304,7 @@ export default function SocialMomentScreen({ navigation }: Props) {
               style={styles.primaryBtnWrap}
             >
               <LinearGradient
-                colors={['#7B6EFF', '#FF6EAF']}
+                colors={['#5B8CDB', '#7C6FCD']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.primaryBtn}
@@ -152,8 +314,8 @@ export default function SocialMomentScreen({ navigation }: Props) {
                 </Text>
               </LinearGradient>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => setStep('mission')} style={styles.backLink}>
-              <Text style={styles.backLinkText}>← Change mission</Text>
+            <TouchableOpacity onPress={() => setStep('recording')} style={styles.backLink}>
+              <Text style={styles.backLinkText}>← Back</Text>
             </TouchableOpacity>
           </View>
         );
@@ -174,7 +336,7 @@ export default function SocialMomentScreen({ navigation }: Props) {
               style={[styles.primaryBtnWrap, { alignSelf: 'stretch', width: '100%' }]}
             >
               <LinearGradient
-                colors={['#7B6EFF', '#A89CFF']}
+                colors={['#5B8CDB', '#7C6FCD']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.primaryBtn}
@@ -187,7 +349,7 @@ export default function SocialMomentScreen({ navigation }: Props) {
     }
   };
 
-  const stepIndex = ['context', 'mission', 'confidence', 'celebration'].indexOf(step);
+  const stepIndex = ['context', 'mission', 'recording', 'confidence', 'celebration'].indexOf(step);
 
   return (
     <View style={[styles.container, { overflow: 'hidden' }]}>
@@ -199,12 +361,12 @@ export default function SocialMomentScreen({ navigation }: Props) {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Social Moment</Text>
         <View style={styles.stepIndicator}>
-          <Text style={styles.stepIndicatorText}>{stepIndex + 1}/4</Text>
+          <Text style={styles.stepIndicatorText}>{stepIndex + 1}/5</Text>
         </View>
       </View>
 
       <View style={styles.progressBar}>
-        <View style={[styles.progressFill, { width: `${((stepIndex + 1) / 4) * 100}%` }]} />
+        <View style={[styles.progressFill, { width: `${((stepIndex + 1) / 5) * 100}%` }]} />
       </View>
 
       <ScrollView
@@ -333,4 +495,54 @@ const styles = StyleSheet.create({
     borderColor: COLORS.primary,
   },
   xpBadgeText: { fontSize: 20, ...FONTS.heading, color: COLORS.primary },
+  micBtn: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACE.xs,
+  },
+  micLabel: { fontSize: 12, color: '#fff', ...FONTS.subheading },
+  waveform: {
+    flexDirection: 'row',
+    gap: 3,
+    alignItems: 'center',
+    height: 50,
+    paddingHorizontal: SPACE.xl,
+  },
+  waveBar: { width: 4, borderRadius: 2, flex: 1 },
+  recTimer: { fontSize: 22, ...FONTS.heading, color: COLORS.text },
+  stopBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACE.sm,
+    backgroundColor: COLORS.danger,
+    borderRadius: RADIUS.full,
+    paddingVertical: 12,
+    paddingHorizontal: SPACE.xl,
+  },
+  stopBtnText: { color: '#fff', fontSize: 15, ...FONTS.heading },
+  playbackCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACE.md,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    padding: SPACE.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignSelf: 'stretch',
+  },
+  playBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playDuration: { flex: 1, fontSize: 15, color: COLORS.textSub },
+  rerecordBtn: { padding: SPACE.sm },
 });

@@ -34,7 +34,7 @@ export default function PrimaryButton({
   const isDisabled = disabled || loading;
 
   if (variant === 'primary') {
-    const colors = gradient ?? ['#7B6EFF', '#A89CFF'];
+    const colors = gradient ?? ['#5B8CDB', '#7C6FCD'];
     return (
       <TouchableOpacity
         onPress={onPress}
