@@ -1,7 +1,13 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  serverTimestamp,
+  writeBatch,
+  getDocs,
+} from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { User, Challenge, ChallengeCategory, ChallengeDifficulty } from '../types';
+import { User, ChallengeCategory, ChallengeDifficulty } from '../types';
 
 const client = new Anthropic({
   apiKey: process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? '',
@@ -22,111 +28,131 @@ interface RawChallenge {
   day: number;
 }
 
+/** Returns true if the user already has a saved plan in Firestore */
+export async function planAlreadyExists(uid: string): Promise<boolean> {
+  const snap = await getDocs(collection(db, 'users', uid, 'challenges'));
+  return !snap.empty;
+}
+
 export async function generateExposurePlan(
   user: User,
   onProgress?: (message: string) => void
 ): Promise<void> {
-  onProgress?.('Connecting to AI therapist...');
-
-  const systemPrompt = `You are a licensed clinical psychologist specializing in CBT and exposure therapy for social anxiety disorder. You create precise, evidence-based exposure therapy plans.`;
-
-  // Thresholds scaled to 72-point version of LSAS (12 highest-impact questions)
-  const scoreContext = (() => {
-    if (user.anxietyScore >= 48) {
-      return 'This is EXTREMELY SEVERE anxiety. Start with challenges so easy most people would not consider them challenges. Literally: stepping outside, looking at their reflection, texting a trusted person.';
-    } else if (user.anxietyScore >= 41) {
-      return 'This is VERY SEVERE anxiety. Start with solo public presence (walking to a park, sitting in a café without talking to anyone).';
-    } else if (user.anxietyScore >= 34) {
-      return 'This is SEVERE anxiety. Brief, scripted interactions first (cashier, barista). No unscripted conversations until challenge 8.';
-    } else if (user.anxietyScore >= 28) {
-      return 'This is MARKED anxiety. Can start with brief conversations but needs heavy scaffolding and exact scripts.';
-    } else if (user.anxietyScore >= 19) {
-      return 'This is MODERATE anxiety. Start with conversations, build to groups. Use behavioral experiments.';
-    } else if (user.anxietyScore >= 10) {
-      return 'This is MILD anxiety. Push into discomfort zones immediately. Include romantic and performance challenges mid-way.';
-    } else {
-      return 'This is MINIMAL anxiety or confidence-building. Challenges should be legitimately difficult social feats even for confident people.';
+  // Guard: never overwrite an existing plan
+  if (user.planGenerated) {
+    const exists = await planAlreadyExists(user.uid);
+    if (exists) {
+      onProgress?.('Plan already exists — loading your challenges...');
+      return;
     }
+  }
+
+  onProgress?.('Building your personalized plan...');
+
+  const scoreContext = (() => {
+    if (user.anxietyScore >= 48)
+      return 'EXTREMELY SEVERE anxiety. Begin with trivially easy actions: stepping outside, texting a trusted person, eye contact with reflection.';
+    if (user.anxietyScore >= 41)
+      return 'VERY SEVERE anxiety. Solo public presence only at first — walking to a park, sitting in a café without talking to anyone.';
+    if (user.anxietyScore >= 34)
+      return 'SEVERE anxiety. Scripted one-line interactions (cashier, barista). No open-ended conversation until challenge 8.';
+    if (user.anxietyScore >= 28)
+      return 'MARKED anxiety. Brief scripted conversations with heavy scaffolding.';
+    if (user.anxietyScore >= 19)
+      return 'MODERATE anxiety. Real conversations from day 1, group interactions by challenge 8.';
+    if (user.anxietyScore >= 10)
+      return 'MILD anxiety. Push immediately into discomfort. Include romantic and performance challenges mid-way.';
+    return 'MINIMAL anxiety. Challenges should be genuinely difficult social feats even for confident people.';
   })();
 
-  const userPrompt = `
-Create a 30-challenge graduated exposure therapy plan for a person with these characteristics:
+  const systemPrompt =
+    'You are a licensed clinical psychologist specializing in CBT and graduated exposure therapy for social anxiety. Output ONLY valid JSON — no prose, no markdown, no code fences.';
+
+  const userPrompt = `Generate exactly 20 graduated exposure therapy challenges for:
 - Name: ${user.displayName}
-- Social Anxiety Score: ${user.anxietyScore}/72 (${user.anxietyLevel})
+- Score: ${user.anxietyScore}/72 (${user.anxietyLevel}) — ${scoreContext}
 - Goal: ${user.goal}
 - Timeframe: ${user.timeframe}
 
-SCIENTIFIC BASIS: This score is from a 12-item version of the Liebowitz Social Anxiety Scale (max 72). This person scored ${user.anxietyScore}/72.
-${scoreContext}
+Rules:
+1. Order by exposure hierarchy — each challenge slightly harder than the last
+2. Challenges 1–3 must be completable today, indoors, within 5 minutes
+3. Tips must be specific and CBT-grounded, not generic
+4. Encouragement references their personal goal
 
-RULES:
-1. Challenges must be ordered by exposure hierarchy — each one slightly harder than the last
-2. Challenges 1–3 must be doable TODAY, at home or within 5 minutes, indoors, regardless of score
-3. Each challenge must feel like a natural next step from the previous one
-4. Tips must be specific, actionable, CBT-grounded (not generic like "take a deep breath")
-5. Encouragement text should be personal and reference their goal
+Return ONLY a raw JSON array (no markdown, no backticks) of exactly 20 objects:
+[{"title":"...","description":"...","emoji":"...","tips":["...","...","..."],"difficulty":"micro"|"easy"|"medium"|"hard"|"elite","xpReward":10-200,"estimatedMinutes":1-60,"encouragement":"...","category":"foundation"|"warmup"|"eye_contact"|"conversation"|"group"|"confrontation"|"romantic"|"performance"|"leadership","week":1-4,"day":1-7},...]`;
 
-Return ONLY a JSON array of exactly 30 objects with this schema:
-{
-  "title": string (max 40 chars),
-  "description": string (2-3 sentences, specific and actionable),
-  "emoji": string (single relevant emoji),
-  "tips": [string, string, string] (each tip 1-2 sentences, CBT-based),
-  "difficulty": "micro"|"easy"|"medium"|"hard"|"elite",
-  "xpReward": number (10-200, proportional to difficulty),
-  "estimatedMinutes": number,
-  "encouragement": string (1 sentence, personal),
-  "category": "foundation"|"warmup"|"eye_contact"|"conversation"|"group"|"confrontation"|"romantic"|"performance"|"leadership",
-  "week": number (1-4),
-  "day": number (1-7 within week)
-}`;
+  onProgress?.('Calling AI — this takes about 30–60 seconds...');
 
-  onProgress?.('Generating your personalized plan with AI...');
+  let rawText: string;
+  try {
+    const message = await client.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 16000, // 20 challenges × ~300 tokens each = ~6000; headroom to never truncate
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userPrompt }],
+    });
 
-  const message = await client.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 8192,
-    system: systemPrompt,
-    messages: [{ role: 'user', content: userPrompt }],
-  });
+    const content = message.content[0];
+    if (content.type !== 'text') throw new Error('Unexpected content type from Claude API');
+    rawText = content.text.trim();
 
-  const content = message.content[0];
-  if (content.type !== 'text') throw new Error('Unexpected response type from AI');
+    // Log stop reason so we can debug truncation
+    if (message.stop_reason === 'max_tokens') {
+      throw new Error('Claude response was truncated (max_tokens reached). Try again.');
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Claude API request failed';
+    throw new Error(`AI generation failed: ${msg}`);
+  }
 
-  onProgress?.('Saving your challenges to Firestore...');
+  onProgress?.('Parsing AI response...');
 
   let rawChallenges: RawChallenge[];
   try {
-    const jsonMatch = content.text.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) throw new Error('No JSON array found in response');
+    // Strip any accidental markdown fences or leading/trailing text
+    const jsonMatch = rawText.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) {
+      throw new Error(
+        `No JSON array found in response. First 200 chars: ${rawText.slice(0, 200)}`
+      );
+    }
     rawChallenges = JSON.parse(jsonMatch[0]);
-  } catch {
-    throw new Error('Failed to parse AI response as JSON');
+    if (!Array.isArray(rawChallenges) || rawChallenges.length === 0) {
+      throw new Error('Parsed result is not a non-empty array');
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Unknown parse error';
+    throw new Error(`Failed to parse AI response: ${msg}`);
   }
 
-  const challengesRef = collection(db, 'users', user.uid, 'challenges');
+  onProgress?.(`Saving ${rawChallenges.length} challenges...`);
 
-  for (let i = 0; i < rawChallenges.length; i++) {
-    const raw = rawChallenges[i];
-    const x = i % 2 === 0 ? 0.2 : 0.75;
-    const y = 130 * i + 60;
-    const status = i === 0 ? 'available' : 'locked';
+  // Use a single writeBatch — one network round trip instead of 30+
+  const batch = writeBatch(db);
 
-    await addDoc(challengesRef, {
+  rawChallenges.forEach((raw, i) => {
+    const challengeRef = doc(collection(db, 'users', user.uid, 'challenges'));
+    batch.set(challengeRef, {
       ...raw,
       order: i,
-      x,
-      y,
-      status,
+      x: i % 2 === 0 ? 0.2 : 0.75,
+      y: 130 * i + 60,
+      status: i === 0 ? 'available' : 'locked',
       aiGenerated: true,
     });
-  }
-
-  const userRef = doc(db, 'users', user.uid);
-  await updateDoc(userRef, {
-    planGenerated: true,
-    planGeneratedAt: serverTimestamp(),
   });
 
-  onProgress?.('Plan ready!');
+  // Mark plan as generated on the user doc (setDoc merge — never fails on missing doc)
+  const userRef = doc(db, 'users', user.uid);
+  batch.set(
+    userRef,
+    { planGenerated: true, planGeneratedAt: serverTimestamp() },
+    { merge: true }
+  );
+
+  await batch.commit();
+
+  onProgress?.('Done! Your plan is ready.');
 }

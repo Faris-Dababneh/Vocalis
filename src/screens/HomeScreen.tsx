@@ -8,6 +8,7 @@ import {
   Animated,
   Platform,
   Alert,
+  ActivityIndicator,
   useWindowDimensions,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -64,6 +65,8 @@ export default function HomeScreen({ navigation }: Props) {
   // Challenges
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [generating, setGenerating] = useState(false);
+  const [generatingMsg, setGeneratingMsg] = useState('');
+  const [generateError, setGenerateError] = useState('');
 
   // Breathing
   const [breathPhase, setBreathPhase] = useState<BreathPhase>('idle');
@@ -245,11 +248,17 @@ export default function HomeScreen({ navigation }: Props) {
   const handleGeneratePlan = async () => {
     if (!user || generating) return;
     setGenerating(true);
+    setGenerateError('');
+    setGeneratingMsg('Starting...');
     try {
-      await generateExposurePlan(user);
+      await generateExposurePlan(user, (msg) => setGeneratingMsg(msg));
       await refreshUser();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Plan generation failed. Please try again.';
+      setGenerateError(msg);
     } finally {
       setGenerating(false);
+      setGeneratingMsg('');
     }
   };
 
@@ -502,25 +511,58 @@ export default function HomeScreen({ navigation }: Props) {
             </View>
           </View>
 
-          {!user?.planGenerated && challenges.length === 0 && (
+          {/* Plan generating / not yet generated */}
+          {challenges.length === 0 && (
             <View style={styles.noPlanCard}>
-              <Text style={styles.noPlanText}>Your personalized plan is being generated...</Text>
-              {generating && <Text style={styles.noPlanSub}>This may take a moment</Text>}
-              {!generating && (
-                <TouchableOpacity
-                  onPress={handleGeneratePlan}
-                  style={styles.generateBtnWrap}
-                  activeOpacity={0.85}
-                >
-                  <LinearGradient
-                    colors={['#7B6EFF', '#A89CFF']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.generateBtn}
+              {generating ? (
+                <>
+                  <ActivityIndicator color={COLORS.primary} size="large" />
+                  <Text style={styles.noPlanTitle}>Building your plan...</Text>
+                  <Text style={styles.noPlanSub}>{generatingMsg}</Text>
+                  <Text style={styles.noPlanHint}>
+                    Powered by Claude AI · usually takes 30–60 seconds
+                  </Text>
+                </>
+              ) : generateError ? (
+                <>
+                  <Text style={styles.noPlanError}>{generateError}</Text>
+                  <TouchableOpacity
+                    onPress={handleGeneratePlan}
+                    style={styles.generateBtnWrap}
+                    activeOpacity={0.85}
                   >
-                    <Text style={styles.generateBtnText}>Generate My Plan</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
+                    <LinearGradient
+                      colors={['#7B6EFF', '#A89CFF']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.generateBtn}
+                    >
+                      <Text style={styles.generateBtnText}>Try Again</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.noPlanTitle}>Your Journey Awaits</Text>
+                  <Text style={styles.noPlanText}>
+                    Generate a personalized 20-challenge exposure therapy plan based on your anxiety profile.
+                  </Text>
+                  <TouchableOpacity
+                    onPress={handleGeneratePlan}
+                    style={styles.generateBtnWrap}
+                    activeOpacity={0.85}
+                  >
+                    <LinearGradient
+                      colors={['#7B6EFF', '#A89CFF']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.generateBtn}
+                    >
+                      <Text style={styles.generateBtnText}>Generate My Plan</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                  <Text style={styles.noPlanHint}>Takes about 30–60 seconds</Text>
+                </>
               )}
             </View>
           )}
@@ -866,8 +908,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: SPACE.sm,
   },
-  noPlanText: { fontSize: 15, color: COLORS.textSub, textAlign: 'center' },
-  noPlanSub: { fontSize: 13, color: COLORS.textMuted },
+  noPlanTitle: { fontSize: 17, ...FONTS.subheading, color: COLORS.text, textAlign: 'center', marginTop: SPACE.sm },
+  noPlanText: { fontSize: 14, color: COLORS.textSub, textAlign: 'center', lineHeight: 20 },
+  noPlanSub: { fontSize: 13, color: COLORS.primaryLight, textAlign: 'center', marginTop: 2 },
+  noPlanHint: { fontSize: 12, color: COLORS.textMuted, textAlign: 'center', marginTop: SPACE.xs },
+  noPlanError: { fontSize: 13, color: COLORS.danger, textAlign: 'center', lineHeight: 18, marginBottom: SPACE.md },
   generateBtnWrap: { alignSelf: 'stretch', borderRadius: RADIUS.full, overflow: 'hidden', marginTop: SPACE.sm },
   generateBtn: { paddingVertical: 14, alignItems: 'center' },
   generateBtnText: { color: '#fff', fontSize: 15, ...FONTS.heading },
