@@ -10,7 +10,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
-import { updateUser, awardXP } from '../services/firestoreService';
+import { updateUser, awardXP, getUser } from '../services/firestoreService';
 import { RootStackParamList } from '../types';
 import { LSAS_QUESTIONS } from '../constants/liebowitz';
 import { COLORS, RADIUS, SPACE, FONTS } from '../constants/theme';
@@ -87,7 +87,14 @@ export default function AssessmentScreen({ navigation, route }: Props) {
       if (isRetake) {
         navigation.goBack();
       } else {
-        navigation.navigate('GoalSetup');
+        // Check if onboarding is already complete (e.g. guest users)
+        // to avoid navigating to a screen not in the current stack
+        const latestUser = await getUser(firebaseUser.uid);
+        if (latestUser?.onboardingCompleted) {
+          navigation.navigate('Home');
+        } else {
+          navigation.navigate('GoalSetup');
+        }
       }
     } finally {
       setLoading(false);

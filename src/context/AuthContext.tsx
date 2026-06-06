@@ -27,6 +27,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (fbUser) => {
+      // Show spinner immediately — prevents navigator from routing
+      // to Assessment before the Firestore user doc is loaded/created
+      setLoading(true);
       setFirebaseUser(fbUser);
       if (fbUser) {
         try {

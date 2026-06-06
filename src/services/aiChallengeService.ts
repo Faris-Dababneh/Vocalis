@@ -84,7 +84,7 @@ Return ONLY a JSON array of exactly 30 objects with this schema:
   onProgress?.('Generating your personalized plan with AI...');
 
   const message = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-6',
     max_tokens: 8192,
     system: systemPrompt,
     messages: [{ role: 'user', content: userPrompt }],
