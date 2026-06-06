@@ -4,12 +4,12 @@ import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
-  apiKey: 'PASTE_YOUR_API_KEY',
-  authDomain: 'PASTE_YOUR_AUTH_DOMAIN',
-  projectId: 'PASTE_YOUR_PROJECT_ID',
-  storageBucket: 'PASTE_YOUR_STORAGE_BUCKET',
-  messagingSenderId: 'PASTE_YOUR_MESSAGING_SENDER_ID',
-  appId: 'PASTE_YOUR_APP_ID',
+  apiKey: 'AIzaSyC_vX88FNAZAloxLt1RR1RxIjXTMkAmG_E',
+  authDomain: 'vocalis-1.firebaseapp.com',
+  projectId: 'vocalis-1',
+  storageBucket: 'vocalis-1.firebasestorage.app',
+  messagingSenderId: '1068431961280',
+  appId: '1:1068431961280:web:19ff1355963d65b5489125',
 };
 
 const app = initializeApp(firebaseConfig);
