@@ -18,19 +18,16 @@ type Props = { navigation: NativeStackNavigationProp<RootStackParamList, 'Onboar
 
 const SLIDES = [
   {
-    emoji: '🫁',
     title: 'Welcome to Vocalis',
     subtitle: 'Your journey to social confidence starts here',
     desc: 'A science-backed app designed to help you overcome social anxiety step by step.',
   },
   {
-    emoji: '🎯',
     title: 'Guided Challenges',
     subtitle: 'Science-backed exposure therapy, personalized to you',
     desc: 'Each challenge is calibrated to your anxiety level and builds on the last.',
   },
   {
-    emoji: '⚡',
     title: 'Track Your Progress',
     subtitle: 'Build momentum with every interaction',
     desc: 'Earn XP, level up, and watch your social confidence grow day by day.',
@@ -62,7 +59,6 @@ export default function OnboardingScreen({ navigation }: Props) {
       <AuroraBackground />
       <View style={[styles.inner, { paddingTop: insets.top + SPACE.xl, paddingBottom: insets.bottom + SPACE.lg }]}>
         <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
-          <Text style={styles.emoji}>{slide.emoji}</Text>
           <Text style={styles.title}>{slide.title}</Text>
           <Text style={styles.subtitle}>{slide.subtitle}</Text>
           <Text style={styles.desc}>{slide.desc}</Text>
@@ -117,10 +113,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: SPACE.md,
-  },
-  emoji: {
-    fontSize: 80,
-    marginBottom: SPACE.md,
   },
   title: {
     fontSize: 32,

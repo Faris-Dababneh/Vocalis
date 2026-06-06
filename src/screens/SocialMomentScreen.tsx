@@ -148,7 +148,7 @@ export default function SocialMomentScreen({ navigation }: Props) {
                 style={styles.primaryBtn}
               >
                 <Text style={styles.primaryBtnText}>
-                  {loading ? 'Saving...' : "I Did It! 🎉"}
+                  {loading ? 'Saving...' : 'I Did It'}
                 </Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -161,8 +161,7 @@ export default function SocialMomentScreen({ navigation }: Props) {
       case 'celebration':
         return (
           <View style={styles.stepWrap}>
-            <Text style={styles.celebConfetti}>🎉✨⚡</Text>
-            <Text style={styles.celebTitle}>You did it!</Text>
+            <Text style={styles.celebTitle}>You did it.</Text>
             <Text style={styles.celebSub}>
               Every social moment you complete builds your confidence. Keep going!
             </Text>

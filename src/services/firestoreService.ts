@@ -16,6 +16,29 @@ import { db } from '../config/firebase';
 import { User, Challenge } from '../types';
 import { calculateLevel } from './gamificationService';
 
+export async function createGuestUser(uid: string): Promise<void> {
+  const userRef = doc(db, 'users', uid);
+  const now = new Date().toISOString().split('T')[0];
+  await setDoc(userRef, {
+    uid,
+    email: '',
+    displayName: 'Guest',
+    createdAt: serverTimestamp(),
+    assessmentCompleted: true,
+    onboardingCompleted: true,
+    anxietyScore: 33,
+    anxietyLevel: 'marked',
+    goal: 'Be more social in general',
+    timeframe: '3 months',
+    xp: 0,
+    level: 0,
+    streak: 0,
+    lastActiveDate: now,
+    achievements: [],
+    planGenerated: false,
+  });
+}
+
 export async function createDefaultUser(
   uid: string,
   email: string,

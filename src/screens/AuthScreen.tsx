@@ -13,6 +13,7 @@ import {
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  signInAnonymously,
 } from 'firebase/auth';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -35,6 +36,7 @@ export default function AuthScreen({ navigation: _navigation }: Props) {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [guestLoading, setGuestLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const validate = () => {
@@ -47,6 +49,19 @@ export default function AuthScreen({ navigation: _navigation }: Props) {
       e.confirmPassword = 'Passwords do not match';
     }
     return e;
+  };
+
+  const handleGuest = async () => {
+    setGuestLoading(true);
+    try {
+      await signInAnonymously(auth);
+      // AuthContext picks up onAuthStateChanged and creates guest user doc automatically
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Could not sign in as guest';
+      setErrors({ general: msg });
+    } finally {
+      setGuestLoading(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -185,6 +200,28 @@ export default function AuthScreen({ navigation: _navigation }: Props) {
             loading={loading}
             style={styles.submitBtn}
           />
+
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <TouchableOpacity
+            onPress={handleGuest}
+            disabled={guestLoading || loading}
+            style={styles.guestBtn}
+            activeOpacity={0.75}
+          >
+            {guestLoading ? (
+              <ActivityIndicator color={COLORS.textSub} size="small" />
+            ) : (
+              <Text style={styles.guestBtnText}>Continue as Guest</Text>
+            )}
+          </TouchableOpacity>
+          <Text style={styles.guestNote}>
+            No account needed · Jump straight into the app
+          </Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -265,5 +302,41 @@ const styles = StyleSheet.create({
   submitBtn: {
     marginTop: SPACE.md,
     alignSelf: 'stretch',
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACE.sm,
+    marginTop: SPACE.md,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: COLORS.border,
+  },
+  dividerText: {
+    fontSize: 13,
+    color: COLORS.textMuted,
+  },
+  guestBtn: {
+    alignSelf: 'stretch',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.full,
+    paddingVertical: 14,
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    minHeight: 50,
+    justifyContent: 'center',
+  },
+  guestBtnText: {
+    fontSize: 15,
+    ...FONTS.subheading,
+    color: COLORS.textSub,
+  },
+  guestNote: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    textAlign: 'center',
   },
 });

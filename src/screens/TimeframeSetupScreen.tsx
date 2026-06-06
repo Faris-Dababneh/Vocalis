@@ -22,11 +22,11 @@ import PrimaryButton from '../components/PrimaryButton';
 type Props = { navigation: NativeStackNavigationProp<RootStackParamList, 'TimeframeSetup'> };
 
 const TIMEFRAMES = [
-  { label: '2 weeks', emoji: '⚡' },
-  { label: '1 month', emoji: '📅' },
-  { label: '3 months', emoji: '🗓️' },
-  { label: '6 months', emoji: '🌱' },
-  { label: 'As long as it takes', emoji: '♾️' },
+  { label: '2 weeks' },
+  { label: '1 month' },
+  { label: '3 months' },
+  { label: '6 months' },
+  { label: 'As long as it takes' },
 ];
 
 export default function TimeframeSetupScreen({ navigation }: Props) {
@@ -81,7 +81,6 @@ export default function TimeframeSetupScreen({ navigation }: Props) {
               style={[styles.chip, selected === t.label && styles.chipActive]}
               activeOpacity={0.75}
             >
-              <Text style={styles.chipEmoji}>{t.emoji}</Text>
               <Text style={[styles.chipText, selected === t.label && styles.chipTextActive]}>
                 {t.label}
               </Text>
@@ -132,7 +131,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     borderColor: COLORS.primaryLight,
   },
-  chipEmoji: { fontSize: 24 },
   chipText: { fontSize: 16, color: COLORS.textSub, ...FONTS.subheading },
   chipTextActive: { color: '#fff' },
   btn: { marginTop: SPACE.lg, alignSelf: 'stretch' },

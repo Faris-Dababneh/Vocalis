@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  useWindowDimensions,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
@@ -25,28 +24,32 @@ type Props = {
 
 const FEAR_LABELS = ['None', 'Mild', 'Moderate', 'Severe'];
 const AVOIDANCE_LABELS = ['Never', 'Occasionally', 'Often', 'Usually'];
-const QUESTIONS_PER_PAGE = 8;
+const QUESTIONS_PER_PAGE = 6; // 12 questions across 2 pages
 
+// Thresholds scaled proportionally from original 144-point scale to 72-point scale
 function scoreToLevel(score: number): string {
-  if (score <= 18) return 'minimal';
-  if (score <= 36) return 'mild';
-  if (score <= 54) return 'moderate';
-  if (score <= 65) return 'marked';
-  if (score <= 80) return 'severe';
-  if (score <= 95) return 'very_severe';
+  if (score <= 9)  return 'minimal';
+  if (score <= 18) return 'mild';
+  if (score <= 27) return 'moderate';
+  if (score <= 33) return 'marked';
+  if (score <= 40) return 'severe';
+  if (score <= 47) return 'very_severe';
   return 'extremely_severe';
 }
 
 export default function AssessmentScreen({ navigation, route }: Props) {
-  const isRetake = route.params?.isRetake ?? false;
-  const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { firebaseUser, refreshUser } = useAuth();
+  const isRetake = route.params?.isRetake ?? false;
 
   const totalPages = Math.ceil(LSAS_QUESTIONS.length / QUESTIONS_PER_PAGE);
   const [page, setPage] = useState(0);
-  const [fearRatings, setFearRatings] = useState<number[]>(new Array(24).fill(-1));
-  const [avoidanceRatings, setAvoidanceRatings] = useState<number[]>(new Array(24).fill(-1));
+  const [fearRatings, setFearRatings] = useState<number[]>(
+    new Array(LSAS_QUESTIONS.length).fill(-1)
+  );
+  const [avoidanceRatings, setAvoidanceRatings] = useState<number[]>(
+    new Array(LSAS_QUESTIONS.length).fill(-1)
+  );
   const [loading, setLoading] = useState(false);
 
   const pageQuestions = LSAS_QUESTIONS.slice(
@@ -54,9 +57,9 @@ export default function AssessmentScreen({ navigation, route }: Props) {
     (page + 1) * QUESTIONS_PER_PAGE
   );
 
-  const pageComplete = pageQuestions.every((q) => {
-    const idx = q.id - 1;
-    return fearRatings[idx] >= 0 && avoidanceRatings[idx] >= 0;
+  const pageComplete = pageQuestions.every((_, localIdx) => {
+    const globalIdx = page * QUESTIONS_PER_PAGE + localIdx;
+    return fearRatings[globalIdx] >= 0 && avoidanceRatings[globalIdx] >= 0;
   });
 
   const handleNext = async () => {
@@ -66,7 +69,9 @@ export default function AssessmentScreen({ navigation, route }: Props) {
     }
     if (!firebaseUser) return;
 
-    const total = fearRatings.reduce((a, b) => a + b, 0) + avoidanceRatings.reduce((a, b) => a + b, 0);
+    const total =
+      fearRatings.reduce((a, b) => a + b, 0) +
+      avoidanceRatings.reduce((a, b) => a + b, 0);
     const level = scoreToLevel(total);
     setLoading(true);
     try {
@@ -99,7 +104,7 @@ export default function AssessmentScreen({ navigation, route }: Props) {
           {isRetake ? 'Retake Assessment' : 'Social Anxiety Assessment'}
         </Text>
         <Text style={styles.subheading}>
-          Page {page + 1} of {totalPages}
+          Page {page + 1} of {totalPages} · {LSAS_QUESTIONS.length} questions total
         </Text>
         <View style={styles.progressBar}>
           <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
@@ -111,17 +116,19 @@ export default function AssessmentScreen({ navigation, route }: Props) {
         showsVerticalScrollIndicator={false}
       >
         <Text style={styles.legend}>
-          Rate each situation for <Text style={styles.legendBold}>Fear/Anxiety</Text> and{' '}
+          Rate each situation for{' '}
+          <Text style={styles.legendBold}>Fear/Anxiety</Text> and{' '}
           <Text style={styles.legendBold}>Avoidance</Text>
         </Text>
 
-        {pageQuestions.map((q) => {
-          const idx = q.id - 1;
+        {pageQuestions.map((q, localIdx) => {
+          const globalIdx = page * QUESTIONS_PER_PAGE + localIdx;
           return (
             <View key={q.id} style={styles.questionCard}>
               <Text style={styles.questionText}>
-                {q.id}. {q.situation}
+                {globalIdx + 1}. {q.situation}
               </Text>
+
               <Text style={styles.ratingLabel}>Fear / Anxiety</Text>
               <View style={styles.ratingRow}>
                 {FEAR_LABELS.map((label, val) => (
@@ -129,18 +136,18 @@ export default function AssessmentScreen({ navigation, route }: Props) {
                     key={val}
                     onPress={() => {
                       const updated = [...fearRatings];
-                      updated[idx] = val;
+                      updated[globalIdx] = val;
                       setFearRatings(updated);
                     }}
                     style={[
                       styles.ratingBtn,
-                      fearRatings[idx] === val && styles.ratingBtnActive,
+                      fearRatings[globalIdx] === val && styles.ratingBtnActive,
                     ]}
                   >
                     <Text
                       style={[
                         styles.ratingBtnText,
-                        fearRatings[idx] === val && styles.ratingBtnTextActive,
+                        fearRatings[globalIdx] === val && styles.ratingBtnTextActive,
                       ]}
                     >
                       {label}
@@ -148,6 +155,7 @@ export default function AssessmentScreen({ navigation, route }: Props) {
                   </TouchableOpacity>
                 ))}
               </View>
+
               <Text style={styles.ratingLabel}>Avoidance</Text>
               <View style={styles.ratingRow}>
                 {AVOIDANCE_LABELS.map((label, val) => (
@@ -155,19 +163,22 @@ export default function AssessmentScreen({ navigation, route }: Props) {
                     key={val}
                     onPress={() => {
                       const updated = [...avoidanceRatings];
-                      updated[idx] = val;
+                      updated[globalIdx] = val;
                       setAvoidanceRatings(updated);
                     }}
                     style={[
                       styles.ratingBtn,
-                      avoidanceRatings[idx] === val && styles.ratingBtnActive,
-                      avoidanceRatings[idx] === val && { backgroundColor: COLORS.accent },
+                      avoidanceRatings[globalIdx] === val && styles.ratingBtnActive,
+                      avoidanceRatings[globalIdx] === val && {
+                        backgroundColor: COLORS.accent,
+                        borderColor: COLORS.accent,
+                      },
                     ]}
                   >
                     <Text
                       style={[
                         styles.ratingBtnText,
-                        avoidanceRatings[idx] === val && styles.ratingBtnTextActive,
+                        avoidanceRatings[globalIdx] === val && styles.ratingBtnTextActive,
                       ]}
                     >
                       {label}

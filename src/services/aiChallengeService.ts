@@ -30,18 +30,19 @@ export async function generateExposurePlan(
 
   const systemPrompt = `You are a licensed clinical psychologist specializing in CBT and exposure therapy for social anxiety disorder. You create precise, evidence-based exposure therapy plans.`;
 
+  // Thresholds scaled to 72-point version of LSAS (12 highest-impact questions)
   const scoreContext = (() => {
-    if (user.anxietyScore >= 96) {
-      return 'This is EXTREMELY SEVERE anxiety. Start with challenges so easy most people would not even consider them challenges. Literally: stepping outside, looking at their reflection, texting a trusted person.';
-    } else if (user.anxietyScore >= 81) {
+    if (user.anxietyScore >= 48) {
+      return 'This is EXTREMELY SEVERE anxiety. Start with challenges so easy most people would not consider them challenges. Literally: stepping outside, looking at their reflection, texting a trusted person.';
+    } else if (user.anxietyScore >= 41) {
       return 'This is VERY SEVERE anxiety. Start with solo public presence (walking to a park, sitting in a café without talking to anyone).';
-    } else if (user.anxietyScore >= 66) {
+    } else if (user.anxietyScore >= 34) {
       return 'This is SEVERE anxiety. Brief, scripted interactions first (cashier, barista). No unscripted conversations until challenge 8.';
-    } else if (user.anxietyScore >= 55) {
+    } else if (user.anxietyScore >= 28) {
       return 'This is MARKED anxiety. Can start with brief conversations but needs heavy scaffolding and exact scripts.';
-    } else if (user.anxietyScore >= 37) {
-      return 'This is MODERATE anxiety. Start with conversations, build to groups. Use behavioral experiments.';
     } else if (user.anxietyScore >= 19) {
+      return 'This is MODERATE anxiety. Start with conversations, build to groups. Use behavioral experiments.';
+    } else if (user.anxietyScore >= 10) {
       return 'This is MILD anxiety. Push into discomfort zones immediately. Include romantic and performance challenges mid-way.';
     } else {
       return 'This is MINIMAL anxiety or confidence-building. Challenges should be legitimately difficult social feats even for confident people.';
@@ -51,11 +52,11 @@ export async function generateExposurePlan(
   const userPrompt = `
 Create a 30-challenge graduated exposure therapy plan for a person with these characteristics:
 - Name: ${user.displayName}
-- Social Anxiety Score: ${user.anxietyScore}/144 (${user.anxietyLevel})
+- Social Anxiety Score: ${user.anxietyScore}/72 (${user.anxietyLevel})
 - Goal: ${user.goal}
 - Timeframe: ${user.timeframe}
 
-SCIENTIFIC BASIS: Use the Liebowitz Social Anxiety Scale. This person scored ${user.anxietyScore}/144.
+SCIENTIFIC BASIS: This score is from a 12-item version of the Liebowitz Social Anxiety Scale (max 72). This person scored ${user.anxietyScore}/72.
 ${scoreContext}
 
 RULES:

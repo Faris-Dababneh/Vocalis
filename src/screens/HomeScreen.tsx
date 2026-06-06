@@ -297,93 +297,119 @@ export default function HomeScreen({ navigation }: Props) {
         {/* Greeting */}
         <View style={styles.section}>
           <Text style={styles.greeting}>
-            {getGreeting()}, {firstName} 👋
+            {getGreeting()}, {firstName}
           </Text>
           <View style={styles.pillRow}>
             <View style={styles.pill}>
-              <Text style={styles.pillText}>🔥 {user?.streak ?? 0} day streak</Text>
+              <Text style={styles.pillText}>{user?.streak ?? 0} day streak</Text>
             </View>
             <View style={styles.pill}>
-              <Text style={styles.pillText}>⚡ Level {user?.level ?? 0}</Text>
+              <Text style={styles.pillText}>Level {user?.level ?? 0}</Text>
             </View>
           </View>
         </View>
 
         {/* Box Breathing Orb */}
         <View style={[styles.section, styles.orbSection]}>
+          {/* Orb — flat sibling structure so text is always fully visible */}
           <TouchableOpacity
             onPress={() => {
               if (breathPhase === 'idle') setBreathPhase('select');
               else if (breathPhase === 'done') resetBreathing();
             }}
-            activeOpacity={breathPhase === 'session' ? 1 : 0.8}
+            activeOpacity={breathPhase === 'session' ? 1 : 0.85}
             disabled={breathPhase === 'session'}
           >
             <Animated.View
               style={[
-                styles.orbOuter,
+                styles.orbContainer,
                 {
-                  width: orbBaseSize * 1.15,
-                  height: orbBaseSize * 1.15,
-                  borderRadius: (orbBaseSize * 1.15) / 2,
-                  transform: [{ scale: breathPhase === 'idle' || breathPhase === 'done' ? orbPulse : orbScale }],
+                  width: orbBaseSize * 1.3,
+                  height: orbBaseSize * 1.3,
+                  transform: [
+                    {
+                      scale:
+                        breathPhase === 'idle' || breathPhase === 'done'
+                          ? orbPulse
+                          : orbScale,
+                    },
+                  ],
                 },
               ]}
             >
-              <Animated.View
+              {/* Ring 1 — outermost glow, rgba so children unaffected */}
+              <View
                 style={[
-                  styles.orbMiddle,
+                  styles.orbRing,
                   {
-                    width: orbBaseSize * 1.07,
-                    height: orbBaseSize * 1.07,
-                    borderRadius: (orbBaseSize * 1.07) / 2,
+                    width: orbBaseSize * 1.3,
+                    height: orbBaseSize * 1.3,
+                    borderRadius: orbBaseSize * 0.65,
+                    backgroundColor: 'rgba(123,110,255,0.12)',
                   },
                 ]}
-              >
-                <Animated.View
-                  style={[
-                    styles.orbInner,
-                    {
-                      width: orbBaseSize,
-                      height: orbBaseSize,
-                      borderRadius: orbBaseSize / 2,
-                    },
-                  ]}
-                >
-                  {breathPhase === 'idle' && (
-                    <View style={styles.orbContent}>
-                      <Text style={styles.orbEmoji}>🫁</Text>
-                      <Text style={styles.orbLabel}>BOX BREATHING</Text>
-                      <Text style={styles.orbSub}>tap to begin</Text>
-                    </View>
-                  )}
-                  {breathPhase === 'session' && (
-                    <View style={styles.orbContent}>
-                      <Text style={styles.orbPhase}>{PHASE_LABELS[currentSessionPhase]}</Text>
-                      <Text style={styles.orbCountdown}>{phaseCountdown}</Text>
-                    </View>
-                  )}
-                  {breathPhase === 'done' && (
-                    <View style={styles.orbContent}>
-                      <Text style={styles.orbEmoji}>✨</Text>
-                      <Text style={styles.orbLabel}>COMPLETE</Text>
-                      <Text style={styles.orbSub}>Tap to reset</Text>
-                    </View>
-                  )}
-                  {breathPhase === 'select' && (
-                    <View style={styles.orbContent}>
-                      <Text style={styles.orbEmoji}>🫁</Text>
-                      <Text style={styles.orbLabel}>CHOOSE</Text>
-                      <Text style={styles.orbSub}>duration below</Text>
-                    </View>
-                  )}
-                </Animated.View>
-              </Animated.View>
+              />
+              {/* Ring 2 — middle */}
+              <View
+                style={[
+                  styles.orbRing,
+                  {
+                    width: orbBaseSize * 1.1,
+                    height: orbBaseSize * 1.1,
+                    borderRadius: orbBaseSize * 0.55,
+                    backgroundColor: 'rgba(123,110,255,0.22)',
+                  },
+                ]}
+              />
+              {/* Core — solid */}
+              <View
+                style={[
+                  styles.orbRing,
+                  {
+                    width: orbBaseSize,
+                    height: orbBaseSize,
+                    borderRadius: orbBaseSize * 0.5,
+                    backgroundColor: COLORS.primary,
+                  },
+                ]}
+              />
+              {/* Text content — sibling, full opacity */}
+              <View style={styles.orbTextLayer}>
+                {breathPhase === 'idle' && (
+                  <>
+                    <Text style={styles.orbLabel}>BOX BREATHING</Text>
+                    <Text style={styles.orbSub}>tap to begin</Text>
+                  </>
+                )}
+                {breathPhase === 'session' && (
+                  <>
+                    <Text style={styles.orbPhase}>{PHASE_LABELS[currentSessionPhase]}</Text>
+                    <Text style={styles.orbCountdown}>{phaseCountdown}</Text>
+                  </>
+                )}
+                {breathPhase === 'done' && (
+                  <>
+                    <Text style={styles.orbLabel}>COMPLETE</Text>
+                    <Text style={styles.orbSub}>Tap to reset</Text>
+                  </>
+                )}
+                {breathPhase === 'select' && (
+                  <>
+                    <Text style={styles.orbLabel}>BOX BREATHING</Text>
+                    <Text style={styles.orbSub}>choose duration</Text>
+                  </>
+                )}
+              </View>
             </Animated.View>
           </TouchableOpacity>
 
           {breathPhase === 'session' && (
-            <Text style={styles.timeLeft}>{formatTime(sessionTimeLeft)}</Text>
+            <View style={styles.sessionControls}>
+              <Text style={styles.timeLeft}>{formatTime(sessionTimeLeft)}</Text>
+              <TouchableOpacity onPress={resetBreathing} style={styles.stopSessionBtn}>
+                <Text style={styles.stopSessionText}>End Session</Text>
+              </TouchableOpacity>
+            </View>
           )}
 
           {breathPhase === 'select' && (
@@ -444,7 +470,7 @@ export default function HomeScreen({ navigation }: Props) {
               end={{ x: 1, y: 0 }}
               style={styles.socializeBtn}
             >
-              <Text style={styles.socializeBtnText}>🚀 I'm About to Socialize</Text>
+              <Text style={styles.socializeBtnText}>I'm About to Socialize</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -452,16 +478,16 @@ export default function HomeScreen({ navigation }: Props) {
         {/* Stats Strip */}
         <View style={[styles.section, styles.statsStrip]}>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>⚡ {user?.xp ?? 0}</Text>
+            <Text style={styles.statValue}>{user?.xp ?? 0}</Text>
             <Text style={styles.statLabel}>XP</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>🔥 {user?.streak ?? 0}</Text>
-            <Text style={styles.statLabel}>days</Text>
+            <Text style={styles.statValue}>{user?.streak ?? 0}</Text>
+            <Text style={styles.statLabel}>day streak</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>✅ {completedCount}</Text>
-            <Text style={styles.statLabel}>wins</Text>
+            <Text style={styles.statValue}>{completedCount}</Text>
+            <Text style={styles.statLabel}>completed</Text>
           </View>
         </View>
 
@@ -478,7 +504,6 @@ export default function HomeScreen({ navigation }: Props) {
 
           {!user?.planGenerated && challenges.length === 0 && (
             <View style={styles.noPlanCard}>
-              <Text style={styles.noPlanEmoji}>✨</Text>
               <Text style={styles.noPlanText}>Your personalized plan is being generated...</Text>
               {generating && <Text style={styles.noPlanSub}>This may take a moment</Text>}
               {!generating && (
@@ -570,8 +595,8 @@ export default function HomeScreen({ navigation }: Props) {
                       }}
                       activeOpacity={0.8}
                     >
-                      <Text style={styles.nodeEmoji}>
-                        {isCompleted ? '✓' : isLocked ? '🔒' : c.emoji}
+                      <Text style={styles.nodeSymbol}>
+                        {isCompleted ? '✓' : isLocked ? '' : String(c.order + 1)}
                       </Text>
                       <Text
                         style={[
@@ -729,35 +754,43 @@ const styles = StyleSheet.create({
   },
   pillText: { fontSize: 13, color: COLORS.textSub },
   orbSection: { alignItems: 'center', gap: SPACE.lg },
-  orbOuter: {
-    backgroundColor: COLORS.primary,
-    opacity: 0.15,
+  orbContainer: {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  orbMiddle: {
-    backgroundColor: COLORS.primary,
-    opacity: 0.3,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  orbInner: {
-    backgroundColor: COLORS.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  orbContent: { alignItems: 'center', gap: SPACE.xs },
-  orbEmoji: { fontSize: 36 },
-  orbLabel: { fontSize: 13, ...FONTS.heading, color: '#fff', letterSpacing: 2 },
-  orbSub: { fontSize: 12, color: 'rgba(255,255,255,0.7)' },
-  orbPhase: { fontSize: 20, ...FONTS.heading, color: '#fff', letterSpacing: 3 },
-  orbCountdown: { fontSize: 32, ...FONTS.heading, color: '#fff' },
-  timeLeft: {
+  orbRing: {
     position: 'absolute',
-    top: 8,
-    right: SPACE.lg,
-    fontSize: 13,
+  },
+  orbTextLayer: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACE.xs,
+  },
+  orbLabel: { fontSize: 13, ...FONTS.heading, color: '#fff', letterSpacing: 2 },
+  orbSub: { fontSize: 12, color: 'rgba(255,255,255,0.85)' },
+  orbPhase: { fontSize: 22, ...FONTS.heading, color: '#fff', letterSpacing: 3 },
+  orbCountdown: { fontSize: 40, ...FONTS.heading, color: '#fff' },
+  sessionControls: {
+    alignItems: 'center',
+    gap: SPACE.sm,
+  },
+  timeLeft: {
+    fontSize: 15,
     color: COLORS.textSub,
+    ...FONTS.subheading,
+  },
+  stopSessionBtn: {
+    borderWidth: 1,
+    borderColor: COLORS.danger,
+    borderRadius: RADIUS.full,
+    paddingVertical: 8,
+    paddingHorizontal: SPACE.lg,
+  },
+  stopSessionText: {
+    color: COLORS.danger,
+    fontSize: 13,
+    ...FONTS.subheading,
   },
   durationPicker: { alignItems: 'center', gap: SPACE.md, width: '100%' },
   durationChips: { flexDirection: 'row', gap: SPACE.sm },
@@ -833,7 +866,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: SPACE.sm,
   },
-  noPlanEmoji: { fontSize: 36 },
   noPlanText: { fontSize: 15, color: COLORS.textSub, textAlign: 'center' },
   noPlanSub: { fontSize: 13, color: COLORS.textMuted },
   generateBtnWrap: { alignSelf: 'stretch', borderRadius: RADIUS.full, overflow: 'hidden', marginTop: SPACE.sm },
@@ -848,7 +880,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  nodeEmoji: { fontSize: 22 },
+  nodeSymbol: { fontSize: 16, color: '#fff', ...FONTS.heading },
   nodeTitle: {
     position: 'absolute',
     top: 70,

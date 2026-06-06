@@ -12,12 +12,12 @@ import PrimaryButton from '../components/PrimaryButton';
 type Props = { navigation: NativeStackNavigationProp<RootStackParamList, 'GoalSetup'> };
 
 const GOALS = [
-  { label: 'Make new friends', emoji: '👫' },
-  { label: 'Be confident at work', emoji: '💼' },
-  { label: 'Date more', emoji: '💘' },
-  { label: 'Overcome fear of judgment', emoji: '🧠' },
-  { label: 'Public speaking', emoji: '🎤' },
-  { label: 'Be more social in general', emoji: '🌟' },
+  { label: 'Make new friends' },
+  { label: 'Be confident at work' },
+  { label: 'Date more' },
+  { label: 'Overcome fear of judgment' },
+  { label: 'Public speaking' },
+  { label: 'Be more social in general' },
 ];
 
 export default function GoalSetupScreen({ navigation }: Props) {
@@ -61,7 +61,6 @@ export default function GoalSetupScreen({ navigation }: Props) {
               style={[styles.chip, selected === g.label && styles.chipActive]}
               activeOpacity={0.75}
             >
-              <Text style={styles.chipEmoji}>{g.emoji}</Text>
               <Text style={[styles.chipText, selected === g.label && styles.chipTextActive]}>
                 {g.label}
               </Text>
@@ -103,7 +102,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     borderColor: COLORS.primaryLight,
   },
-  chipEmoji: { fontSize: 20 },
   chipText: { fontSize: 14, color: COLORS.textSub, ...FONTS.subheading },
   chipTextActive: { color: '#fff' },
   btn: { marginTop: SPACE.md, alignSelf: 'stretch' },

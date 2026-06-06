@@ -145,7 +145,6 @@ export default function ChallengeDetailScreen({ navigation, route }: Props) {
         {/* DETAIL */}
         {phase === 'detail' && (
           <View style={styles.phaseWrap}>
-            <Text style={styles.emoji}>{emoji}</Text>
             <Text style={styles.title}>{title}</Text>
             <Text style={styles.description}>{description}</Text>
             <View style={styles.metaRow}>
@@ -234,7 +233,6 @@ export default function ChallengeDetailScreen({ navigation, route }: Props) {
               Tap the microphone to record your experience. Hearing yourself helps build confidence.
             </Text>
             <TouchableOpacity onPress={startRecording} style={styles.micBtn} activeOpacity={0.8}>
-              <Text style={styles.micEmoji}>🎙️</Text>
               <Text style={styles.micLabel}>Tap to record</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setPhase('anxiety_after')} style={styles.skipLink}>
@@ -347,12 +345,11 @@ export default function ChallengeDetailScreen({ navigation, route }: Props) {
         {/* DONE */}
         {phase === 'done' && result && (
           <View style={styles.phaseWrap}>
-            <Text style={styles.confetti}>🎉✨🏆</Text>
-            <Text style={styles.doneTitle}>Challenge Complete!</Text>
+            <Text style={styles.doneTitle}>Challenge Complete</Text>
             <Text style={styles.xpEarned}>+{result.xpEarned} XP</Text>
             {result.leveledUp && (
               <View style={styles.levelUpBadge}>
-                <Text style={styles.levelUpText}>Level Up! 🎉 You're now Level {result.newLevel}</Text>
+                <Text style={styles.levelUpText}>Level Up — You're now Level {result.newLevel}</Text>
               </View>
             )}
             <TouchableOpacity
@@ -460,8 +457,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: SPACE.xs,
   },
-  micEmoji: { fontSize: 36 },
-  micLabel: { fontSize: 12, color: '#fff' },
+  micLabel: { fontSize: 14, color: '#fff', fontWeight: '600' },
   skipLink: { padding: SPACE.sm },
   skipLinkText: { color: COLORS.textMuted, fontSize: 13 },
   waveform: {
