@@ -1,4 +1,4 @@
-import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
 import {
   collection,
   doc,
@@ -9,8 +9,10 @@ import {
 import { db } from '../config/firebase';
 import { User, ChallengeCategory, ChallengeDifficulty } from '../types';
 
-const client = new Anthropic({
-  apiKey: process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? '',
+// Qwen via DashScope international — OpenAI-compatible interface
+const client = new OpenAI({
+  apiKey: process.env.EXPO_PUBLIC_DASHSCOPE_API_KEY ?? '',
+  baseURL: 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
   dangerouslyAllowBrowser: true,
 });
 
@@ -66,19 +68,29 @@ export async function generateExposurePlan(
   })();
 
   const systemPrompt =
-    'You are a licensed clinical psychologist specializing in CBT and graduated exposure therapy for social anxiety. Output ONLY valid JSON — no prose, no markdown, no code fences.';
+    'You are a licensed clinical psychologist specializing in CBT and graduated exposure therapy for social anxiety. Output ONLY valid JSON. No prose, no markdown, no code fences. Never use hyphens or dashes. Write warmly and conversationally.';
 
   const userPrompt = `Generate exactly 20 graduated exposure therapy challenges for:
 - Name: ${user.displayName}
-- Score: ${user.anxietyScore}/72 (${user.anxietyLevel}) — ${scoreContext}
+- Score: ${user.anxietyScore}/72 (${user.anxietyLevel}). ${scoreContext}
 - Goal: ${user.goal}
 - Timeframe: ${user.timeframe}
 
 Rules:
-1. Order by exposure hierarchy — each challenge slightly harder than the last
-2. Challenges 1–3 must be completable today, indoors, within 5 minutes
-3. Tips must be specific and CBT-grounded, not generic
-4. Encouragement references their personal goal
+1. Order by exposure hierarchy. Each challenge slightly harder than the last.
+2. Challenges 1 to 3 must be completable today, indoors, within 5 minutes.
+3. Tips must be specific and CBT-grounded, not generic.
+4. Encouragement references their personal goal.
+
+CRITICAL FORMATTING RULES:
+- NEVER use hyphens, em dashes, or en dashes (-, or similar) anywhere in any field
+- Write in plain, warm, conversational English
+- Keep sentences short. Use periods, not dashes.
+- No bullet points or numbered lists inside string fields
+- title: max 6 words
+- description: 1 to 2 short sentences. Plain language. No jargon.
+- tips: each tip is 1 short sentence. Practical. Specific. No cliches.
+- encouragement: 1 warm sentence. Reference their goal naturally.
 
 Return ONLY a raw JSON array (no markdown, no backticks) of exactly 20 objects:
 [{"title":"...","description":"...","emoji":"...","tips":["...","...","..."],"difficulty":"micro"|"easy"|"medium"|"hard"|"elite","xpReward":10-200,"estimatedMinutes":1-60,"encouragement":"...","category":"foundation"|"warmup"|"eye_contact"|"conversation"|"group"|"confrontation"|"romantic"|"performance"|"leadership","week":1-4,"day":1-7},...]`;
@@ -87,23 +99,25 @@ Return ONLY a raw JSON array (no markdown, no backticks) of exactly 20 objects:
 
   let rawText: string;
   try {
-    const message = await client.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 16000, // 20 challenges × ~300 tokens each = ~6000; headroom to never truncate
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userPrompt }],
+    const completion = await client.chat.completions.create({
+      model: 'qwen-plus', // qwen3.6-plus via DashScope international API string
+      max_tokens: 16000,  // 20 challenges × ~300 tokens each = ~6000; headroom to never truncate
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
     });
 
-    const content = message.content[0];
-    if (content.type !== 'text') throw new Error('Unexpected content type from Claude API');
-    rawText = content.text.trim();
+    const choice = completion.choices[0];
+    if (!choice?.message?.content) throw new Error('Empty response from Qwen API');
+    rawText = choice.message.content.trim();
 
-    // Log stop reason so we can debug truncation
-    if (message.stop_reason === 'max_tokens') {
-      throw new Error('Claude response was truncated (max_tokens reached). Try again.');
+    // Check if response was truncated
+    if (choice.finish_reason === 'length') {
+      throw new Error('Qwen response was truncated (max_tokens reached). Try again.');
     }
   } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Claude API request failed';
+    const msg = err instanceof Error ? err.message : 'Qwen API request failed';
     throw new Error(`AI generation failed: ${msg}`);
   }
 
