@@ -52,7 +52,8 @@ export async function getUser(uid: string): Promise<User | null> {
 
 export async function updateUser(uid: string, data: Partial<User>): Promise<void> {
   const userRef = doc(db, 'users', uid);
-  await updateDoc(userRef, data as Record<string, unknown>);
+  // Use setDoc with merge so it works even if the document doesn't exist yet
+  await setDoc(userRef, data as Record<string, unknown>, { merge: true });
 }
 
 export async function getUserChallenges(uid: string): Promise<Challenge[]> {

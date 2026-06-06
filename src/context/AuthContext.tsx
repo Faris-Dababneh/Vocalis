@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User as FirebaseUser, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { User } from '../types';
-import { getUser } from '../services/firestoreService';
+import { getUser, createDefaultUser } from '../services/firestoreService';
 
 interface AuthContextType {
   firebaseUser: FirebaseUser | null;
@@ -30,7 +30,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setFirebaseUser(fbUser);
       if (fbUser) {
         try {
-          const userData = await getUser(fbUser.uid);
+          let userData = await getUser(fbUser.uid);
+          // Auto-heal: if Auth user exists but Firestore doc is missing, create it
+          if (!userData) {
+            await createDefaultUser(
+              fbUser.uid,
+              fbUser.email ?? '',
+              fbUser.displayName ?? fbUser.email?.split('@')[0] ?? 'User'
+            );
+            userData = await getUser(fbUser.uid);
+          }
           setUser(userData);
         } catch {
           setUser(null);
